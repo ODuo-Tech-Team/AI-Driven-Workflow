@@ -70,6 +70,11 @@ services:
   worker:
     image: ghcr.io/oduo-tech-team/ai-driven-workflow:${IMAGE_TAG:-latest}
     command: ["rq", "worker", "--url", "redis://redis:6379/0", "default"]
+    # The image-level HEALTHCHECK probes http://127.0.0.1:8000/health, which
+    # only the api service exposes. The worker does not run uvicorn, so that
+    # probe always fails and Swarm kills the container after ~75s. Disable it.
+    healthcheck:
+      disable: true
     environment:
       APP_ENV: prod
       APP_LOG_LEVEL: INFO
