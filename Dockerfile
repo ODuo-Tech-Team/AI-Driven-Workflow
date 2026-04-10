@@ -25,7 +25,9 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-install-project --no-dev || \
     uv sync --no-install-project --no-dev
 
-# Copy project source and install the package itself
+# Copy project source (and README.md required by hatchling at build time)
+# and install the package itself
+COPY README.md ./
 COPY src ./src
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --no-dev
