@@ -1,0 +1,58 @@
+# Local development stack with hot reload. NOT for production.
+#
+#   docker compose -f docker-compose.dev.yml up --build
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    command: >
+      uv run uvicorn ai_workflow.main:app
+      --host 0.0.0.0 --port 8000 --reload
+    working_dir: /app
+    environment:
+      APP_ENV: dev
+      APP_LOG_LEVEL: DEBUG
+      REDIS_URL: redis://redis:6379/0
+    env_file:
+      - .env
+    volumes:
+      - ./src:/app/src
+      - ./tests:/app/tests
+      - ./pyproject.toml:/app/pyproject.toml
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    command: >
+      uv run rq worker --url redis://redis:6379/0 default
+    working_dir: /app
+    environment:
+      APP_ENV: dev
+      APP_LOG_LEVEL: DEBUG
+      REDIS_URL: redis://redis:6379/0
+    env_file:
+      - .env
+    volumes:
+      - ./src:/app/src
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7.4-alpine
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  redis_data:

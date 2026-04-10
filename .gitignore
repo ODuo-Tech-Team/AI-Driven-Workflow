@@ -1,0 +1,76 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# uv
+.venv/
+.uv-cache/
+
+# Tests / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+
+# Ruff / mypy
+.ruff_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Env vars and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+!.github/**/*.key
+
+# IDE / editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Local scratch
+.tmp/
+scratch/
+*.bak
+
+# Docker local state
+.docker/
+
+# Claude Code local state — planning docs, napkin, personas, settings.
+# Everything inside .claude/ is private and must NEVER be committed.
+.claude/

@@ -1,0 +1,143 @@
+# Docker Swarm stack for the AI-Driven Workflow service.
+#
+# Deploy with:
+#   docker stack deploy -c docker-stack.yml ai-workflow
+#
+# Requires the external overlay network `network_public` (already owned by
+# the Traefik stack on the target VPS). The `ai-workflow_internal` overlay
+# is created automatically by this stack.
+
+version: "3.9"
+
+services:
+  api:
+    image: ghcr.io/oduo-tech-team/ai-driven-workflow:${IMAGE_TAG:-latest}
+    environment:
+      APP_ENV: prod
+      APP_LOG_LEVEL: INFO
+      APP_HOST: 0.0.0.0
+      APP_PORT: "8000"
+      REDIS_URL: redis://redis:6379/0
+      # Secrets loaded from /run/secrets/<name> by pydantic-settings.secrets_dir
+    secrets:
+      - anthropic_api_key
+      - linear_api_key
+      - linear_webhook_secret
+      - github_token
+      - github_webhook_secret
+    networks:
+      - network_public
+      - internal
+    volumes:
+      - /mnt/arquivo_midias/ai-workflow/logs:/app/logs
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      update_config:
+        order: start-first
+        parallelism: 1
+        delay: 10s
+        failure_action: rollback
+      rollback_config:
+        parallelism: 1
+        order: stop-first
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256M
+        reservations:
+          cpus: "0.10"
+          memory: 128M
+      labels:
+        traefik.enable: "true"
+        traefik.docker.network: network_public
+        traefik.swarm.network: network_public
+        traefik.http.routers.ai-workflow.rule: Host(`ai-workflow.5.161.248.113.nip.io`)
+        traefik.http.routers.ai-workflow.entrypoints: websecure
+        traefik.http.routers.ai-workflow.tls: "true"
+        traefik.http.routers.ai-workflow.tls.certresolver: letsencryptresolver
+        traefik.http.services.ai-workflow.loadbalancer.server.port: "8000"
+
+  worker:
+    image: ghcr.io/oduo-tech-team/ai-driven-workflow:${IMAGE_TAG:-latest}
+    command: ["rq", "worker", "--url", "redis://redis:6379/0", "default"]
+    environment:
+      APP_ENV: prod
+      APP_LOG_LEVEL: INFO
+      REDIS_URL: redis://redis:6379/0
+      # Secrets loaded from /run/secrets/<name> by pydantic-settings.secrets_dir
+    secrets:
+      - anthropic_api_key
+      - linear_api_key
+      - github_token
+    networks:
+      - internal
+    volumes:
+      - /mnt/arquivo_midias/ai-workflow/logs:/app/logs
+      - /mnt/arquivo_midias/ai-workflow/tmp:/app/tmp
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+      resources:
+        limits:
+          cpus: "0.35"
+          memory: 384M
+        reservations:
+          cpus: "0.15"
+          memory: 192M
+
+  redis:
+    image: redis:7.4-alpine
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 96mb
+      --maxmemory-policy allkeys-lru
+    networks:
+      - internal
+    volumes:
+      - /mnt/arquivo_midias/ai-workflow/data/redis:/data
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+      resources:
+        limits:
+          cpus: "0.15"
+          memory: 128M
+        reservations:
+          cpus: "0.05"
+          memory: 64M
+
+networks:
+  network_public:
+    external: true
+  internal:
+    driver: overlay
+    attachable: false
+
+secrets:
+  anthropic_api_key:
+    external: true
+    name: ai-workflow_anthropic_api_key
+  linear_api_key:
+    external: true
+    name: ai-workflow_linear_api_key
+  linear_webhook_secret:
+    external: true
+    name: ai-workflow_linear_webhook_secret
+  github_token:
+    external: true
+    name: ai-workflow_github_token
+  github_webhook_secret:
+    external: true
+    name: ai-workflow_github_webhook_secret
